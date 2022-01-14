@@ -8,10 +8,10 @@ from sklearn.linear_model import Lasso, LinearRegression
 from sklearn.preprocessing import StandardScaler
 from sklearn.model_selection import GridSearchCV
 
-from chweimo.explain.weight import gini, kl_divergence
+from chweimo.explain.weight import kl_divergence
 
 
-def aggregate_delta(
+def aggregate_cf(
     section_X,
     section_F,
     section_X_orig,
@@ -22,58 +22,61 @@ def aggregate_delta(
     data_name,
 ):
 
-    # Initialize empty arrays for changes and percent
-    obj1_percent = np.empty((1, section_X_orig[0].shape[0]))
-    obj2_percent = np.empty((1, section_X_orig[0].shape[0]))
+    # Initialize empty dicts of arrays for changes, percents
+    obj_percent = {}
+    obj_change = {}
+    
+    for key in ["obj1", "obj2"]:
+        obj_percent[key] = np.empty((1, section_X_orig[0].shape[0]))
+        obj_change[key] = np.empty((1, section_X_orig[0].shape[0]))
 
-    obj1_change = np.empty((1, section_X_orig[0].shape[0]))
-    obj2_change = np.empty((1, section_X_orig[0].shape[0]))
-
+    
     for i, orig_sample in enumerate(section_X_orig):
 
         x_subsection = section_X[i]  # Get final GA population
         f_subsection = section_F[i]  # Get final GA fitness
-
-        obj_2 = f_subsection[:, [1]] * -1 * 100  # Convert fitness back to normal
-        obj_1 = f_subsection[:, [0]] * -1
-
+        
+        obj_1 = f_subsection[:, [0]] * -1 # Convert fitness back to normal
+        obj_2 = f_subsection[:, [1]] * -1 * 100  
+        
         # Find most optimal individuals
-        obj1_best = x_subsection[np.where(obj_1 == max(obj_1))[0]]
-        obj2_best = x_subsection[np.where(obj_2 == max(obj_2))[0]]
+        obj1_best = x_subsection[np.where(obj_1 == max(obj_1))[0][0]]
+        obj2_best = x_subsection[np.where(obj_2 == max(obj_2))[0][0]]
+        print(f"Length: {len(obj2_best)})")
 
         # Calculate deltas and add to arrays
-        obj1_deltas = obj1_best - orig_sample
-        obj2_deltas = obj2_best - orig_sample
+        obj1_cf = obj1_best - orig_sample
+        obj2_cf = obj2_best - orig_sample
 
-        obj1_change = np.vstack((obj1_change, obj1_deltas))
-        obj2_change = np.vstack((obj2_change, obj2_deltas))
+        obj_change["obj1"] = np.vstack((obj_change["obj1"], obj1_cf))
+        obj_change["obj2"] = np.vstack((obj_change["obj2"], obj2_cf))
 
         # Find percentage change and add to arrays
-        obj1_percent = abs(((obj1_deltas + 1) / (orig_sample + 1))) * 100
-        obj2_percent = abs(((obj2_deltas + 1) / (orig_sample + 1))) * 100
+        obj1_percent = abs(((obj1_cf + 1) / (orig_sample + 1))) * 100
+        obj2_percent = abs(((obj2_cf + 1) / (orig_sample + 1))) * 100
 
-        obj1_percent = np.vstack((obj1_percent, obj1_percent))
-        obj2_percent = np.vstack((obj2_percent, obj2_percent))
+        obj_percent["obj1"] = np.vstack((obj_percent["obj1"], obj1_percent))
+        obj_percent["obj2"] = np.vstack((obj_percent["obj2"], obj2_percent))
 
     # Delete dummy entry from percents and find median
-    obj1_percent = np.delete(obj1_percent, 0, axis=0)
-    obj2_percent = np.delete(obj2_percent, 0, axis=0)
+    obj_percent["obj1"] = np.delete(obj_percent["obj1"], 0, axis=0)
+    obj_percent["obj2"] = np.delete(obj_percent["obj2"], 0, axis=0)
 
-    obj1_percent = np.round(np.median(obj1_percent, axis=0), 2)
-    obj2_percent = np.round(np.median(obj2_percent, axis=0), 2)
+    obj1_percent_med = np.round(np.median(obj_percent["obj1"], axis=0), 2)
+    obj2_percent_med = np.round(np.median(obj_percent["obj2"], axis=0), 2)
 
     # Delete dummy entry from changes and find median
-    obj1_change = np.delete(obj1_change, 0, axis=0)
-    obj2_change = np.delete(obj2_change, 0, axis=0)
+    obj_change["obj1"] = np.delete(obj_change["obj1"], 0, axis=0)
+    obj_change["obj2"] = np.delete(obj_change["obj2"], 0, axis=0)
 
-    obj1_change = np.round(np.median(obj1_change, axis=0), 2)
-    obj2_change = np.round(np.median(obj2_change, axis=0), 2)
+    obj1_change_med = np.round(np.median(obj_change["obj1"], axis=0), 2)
+    obj2_change_med = np.round(np.median(obj_change["obj2"], axis=0), 2)
 
-    #######################################################################
-
-    plot_delta(
-        obj1_percent,
-        obj2_percent,
+    # Plot median changes and percentages based on feature type
+    
+    plot_cf(
+        obj1_percent_med,
+        obj2_percent_med,
         feature_map["continuous"],
         "Continuous",
         col_name,
@@ -82,9 +85,9 @@ def aggregate_delta(
         data_name,
     )
 
-    plot_delta(
-        obj1_change,
-        obj2_change,
+    plot_cf(
+        obj1_change_med,
+        obj2_change_med,
         feature_map["discrete"],
         "Discrete",
         col_name,
@@ -92,9 +95,10 @@ def aggregate_delta(
         plausible,
         data_name,
     )
-
-
-def plot_delta(
+    
+    return obj_change # Return counterfactuals
+    
+def plot_cf(
     obj1, obj2, type_map, type_name, col_name, cm_section, plausible, data_name
 ):
 
@@ -148,7 +152,7 @@ def plot_delta(
     )
 
 
-def aggregate_coeff(
+def aggregate_weight(
     section_X, section_F, section_X_orig, cm_section, col_name, plausible, data_name
 ):
 
@@ -179,7 +183,8 @@ def aggregate_coeff(
 
         coef = abs(clf.best_estimator_.coef_)
         coef_KL = np.vstack((coef_KL, coef))
-
+        
+        """
         # Finding coefficients with GINI Grid Search
         clf = GridSearchCV(Lasso(), param_grid, scoring=gini)
 
@@ -189,9 +194,10 @@ def aggregate_coeff(
 
         coef = abs(clf.best_estimator_.coef_)
         coef_GINI = np.vstack((coef_GINI, coef))
-
+        """
+        
         # Finding normal coefficients with default LASSO
-        regressor = Lasso(alpha=0.01)  # Intialize
+        regressor = LinearRegression()  # Intialize
         regressor.fit(deltas, obj_2)  # Fit
         coef = abs(regressor.coef_.reshape(1, -1))  # Coefficients
         coef_normal = np.vstack((coef_normal, coef))
@@ -214,12 +220,12 @@ def aggregate_coeff(
     sparsity_measure_normal = np.round(gini(coef_median_normal.reshape(-1,1)),2)
     """
 
-    plot_coeff(
+    plot_weight(
         coef_KL, coef_GINI, coef_normal, col_name, cm_section, plausible, data_name
     )
 
 
-def plot_coeff(
+def plot_weight(
     coef_KL, coef_GINI, coef_normal, col_name, cm_section, plausible, data_name
 ):
 
@@ -229,27 +235,27 @@ def plot_coeff(
     # Shorten column names
     for i, v in enumerate(feature_names):
         feature_names[i] = v[0:5]
-        
+
     x_ticks = np.arange(0, len(coef_KL))
 
     # Construct bar plot
     width = 0.20
     fig, ax = plt.subplots()
     rects1 = ax.bar(
-        x_ticks - width/2,
+        x_ticks - width / 2,
         np.round(coef_normal, 2),
         width,
         label="No Grid Search",
         color="tab:purple",
     )
     rects2 = ax.bar(
-        x_ticks + width/2,
+        x_ticks + width / 2,
         np.round(coef_KL, 2),
         width,
         label="With KL divergence",
         color="tab:blue",
     )
-    
+
     """
     rects3 = ax.bar(
         x_ticks + (width/2)*2,
@@ -259,7 +265,6 @@ def plot_coeff(
         color="tab:orange",
     )
     """
-
 
     # Graph details
     plaus_title = "P" if plausible else "NP"
@@ -283,4 +288,4 @@ def plot_coeff(
 
     fig.tight_layout()
     plt.show()
-    fig.savefig("{d}_coef_{c}_{p}.png".format(d=data_name, c=cm_section, p=plaus_title))
+    fig.savefig("figures/{d}_coef_{c}_{p}.png".format(d=data_name, c=cm_section, p=plaus_title))

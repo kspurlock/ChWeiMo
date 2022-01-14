@@ -17,7 +17,7 @@ from sklearn.model_selection import KFold
 
 from chweimo.generate import Optimizer
 from chweimo.utils import split_by_cm
-from chweimo.explain import aggregate_delta, aggregate_coeff
+from chweimo.explain import aggregate_cf, aggregate_weight
 
 import os
 
@@ -106,7 +106,9 @@ if __name__ == "__main__":
     #%%
     start = time.process_time()  # Check how long non-plausible takes
     itera = 0
-    for section in [cm_splits[-1]]:  # Loop for each confusion matrix section
+    cf_dicts = dict.fromkeys(cm_labels)
+    
+    for section in cm_splits:  # Loop for each confusion matrix section
         section_F = []
         section_X = []
         section_X_orig = []
@@ -136,16 +138,11 @@ if __name__ == "__main__":
 
         """Once outside need to aggregate change weights and coefficients"""
 
-        #aggregate_delta_percentages(section_X, section_F, section_X_orig, itera)
-        aggregate_delta(
+        counterfactuals = aggregate_cf(
             section_X, section_F, section_X_orig, cm_labels[itera], cols, feature_map, plausible, "Credit Risk"
         )
         
-        aggregate_coeff(section_X, section_F, section_X_orig, cm_labels[itera], cols, plausible, "Credit Risk")
+        aggregate_weight(section_X, section_F, section_X_orig, cm_labels[itera], cols, plausible, "Credit Risk")
         
-        # aggregate_coeff(section_X, section_F, section_X_orig, itera)
-
+        cf_dicts[cm_labels[itera]] = counterfactuals
         itera += 1
-
-
-#%% Begin aggregation
