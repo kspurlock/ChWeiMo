@@ -3,7 +3,7 @@ import pandas as pd
 import time
 import sys
 
-sys.path.append("../")
+sys.path.append("../CHWEIMO")
 
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import (
@@ -25,15 +25,13 @@ os.environ["OMP_NUM_THREADS"] = "2"
 
 
 def preprocessing():
-    dataset = pd.read_csv("data/german_credit_data.csv").drop("Unnamed: 0", axis=1)
+    dataset = pd.read_csv("./tests/data/german_credit_data.csv").drop("Unnamed: 0", axis=1)
 
     dataset.dropna(axis=0, how="any", thresh=None, subset=None, inplace=True)
 
-    lb = LabelEncoder()
-
     for column in dataset.columns:
         if dataset[column].dtype != np.dtype("int64"):
-            dataset[column] = lb.fit_transform(dataset[column])
+            dataset[column] = LabelEncoder().fit_transform(dataset[column])
 
     return dataset
 
@@ -85,7 +83,6 @@ if __name__ == "__main__":
     Y = dataset.iloc[:, [-1]].values.reshape(-1,)
 
     cm, metrics, splits = train_model(X, Y, model)
-    # train_model(X, Y, model2)
 
     x_train, x_test = X[splits[0][0]], X[splits[0][1]]
     y_train, y_test = Y[splits[0][0]], Y[splits[0][1]]
@@ -94,8 +91,6 @@ if __name__ == "__main__":
     cm_labels = ["true_neg", "false_neg", "true_pos", "false_pos"]
 
     data_maximums = np.max(dataset.iloc[:, :-1])
-    
-    plausible = True
     
     discrete_map = np.where(
         data_maximums < 20, 1, 0
@@ -107,6 +102,8 @@ if __name__ == "__main__":
     start = time.process_time()  # Check how long non-plausible takes
     itera = 0
     cf_dicts = dict.fromkeys(cm_labels)
+    
+    plausible = True
     
     for section in cm_splits:  # Loop for each confusion matrix section
         section_F = []
@@ -121,14 +118,12 @@ if __name__ == "__main__":
 
             change_class = np.argmin(x_orig_y)  # what class do we need to change to
 
-            params = {"termination": 100}
-
             res = explainer.optimize_instance(
                 sample=x_orig,
                 change_class=change_class,
-                plausible=plausible,
+                plausible=True,
                 method="NSGA2",
-                opt_param=params,
+                termination=1,
             )
 
             section_X.append(res.history[-1].pop.get("X"))

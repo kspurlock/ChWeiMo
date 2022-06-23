@@ -2,8 +2,8 @@ import numpy as np
 import copy
 
 def find_samples(x_test, model, borderline):
-    '''Borderline is a bool var that determines whether to find confident or 
-        borderline samples based on predictions'''
+    """Borderline is a bool var that determines whether to find confident or 
+        borderline samples based on predictions"""
 
     predictions = model.predict_proba(x_test)
     indices = []
