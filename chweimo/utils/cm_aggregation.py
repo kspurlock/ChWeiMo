@@ -15,7 +15,7 @@ def split_by_cm(x, y, model, test_size=0.20):
     model.fit(x_train, y_train)
     y_pred = model.predict(x_test)
     plt.rcParams['font.size'] = '20'
-    fig = plot_confusion_matrix(model, x_test, y_test, cmap = 'Blues', colorbar = False)
+    #fig = plot_confusion_matrix(model, x_test, y_test, cmap = 'Blues', colorbar = False)
 
     for i in range(x_test.shape[0]):
         #Four cases

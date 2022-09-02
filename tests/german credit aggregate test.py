@@ -15,7 +15,7 @@ from sklearn.metrics import (
 from sklearn.preprocessing import LabelEncoder
 from sklearn.model_selection import KFold
 
-from chweimo.generate import Optimizer
+from chweimo.counterfactual import Optimizer
 from chweimo.utils import split_by_cm
 from chweimo.explain import aggregate_cf, aggregate_weight
 
