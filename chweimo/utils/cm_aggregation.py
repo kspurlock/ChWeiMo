@@ -4,7 +4,12 @@ import matplotlib.pyplot as plt
 from sklearn.metrics import plot_confusion_matrix
 import numpy as np
 
-def split_by_cm(x, y, model, test_size=0.20, plot_cm=False):
+from sklearn.model_selection import train_test_split
+import matplotlib.pyplot as plt
+from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay
+import numpy as np
+
+def split_by_cm(x, y, model, test_size=0.20, plot_cm=False, class_names=None):
         
     cm_dict_x = {"true_neg":[], "false_neg":[], "true_pos":[], "false_pos":[]}
     cm_dict_y = {"true_neg":[], "false_neg":[], "true_pos":[], "false_pos":[]}
@@ -16,10 +21,15 @@ def split_by_cm(x, y, model, test_size=0.20, plot_cm=False):
     model.fit(x_train, y_train)
     y_prob = model.predict_proba(x_test)
     y_pred = np.argmax(y_prob, axis=1)
+    cm = confusion_matrix(y_test, y_pred)
     
+    if class_names == None:
+        class_names = np.unique(y_pred)
+        
     if plot_cm:
-        plt.rcParams['font.size'] = '20'
-        fig = plot_confusion_matrix(model, x_test, y_test, cmap = 'Blues', colorbar = False)
+        plt.rcParams['font.size'] = '15'
+        fig = ConfusionMatrixDisplay(cm, display_labels=class_names)
+        fig.plot(cmap="Greens", colorbar=False, xticks_rotation="horizontal")
 
     for i in range(x_test.shape[0]):
         #Four cases

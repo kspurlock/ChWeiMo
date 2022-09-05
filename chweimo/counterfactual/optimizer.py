@@ -70,9 +70,9 @@ class Optimizer():
             opt_param_ = {"termination": 100,
                       "pop_size": 40,
                       "n_offsprings": 20,
-                      "sampling": "int_random",
-                      "crossover": ["int_sbx", 0.9, 15],
-                      "mutation": ["int_pm", 20],
+                      "sampling": "real_random",
+                      "crossover": ["real_sbx", 0.9, 15],
+                      "mutation": ["real_pm", 20],
                       "verbose": False}
             
             for key in kwargs.keys():

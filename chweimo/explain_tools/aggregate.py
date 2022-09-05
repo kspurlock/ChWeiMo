@@ -55,15 +55,19 @@ def perform_aggregation(explainer, cm_splits, type_dict,
         merged_change = consolidate_agg_change(change_agg)
         merged_weight = consolidate_agg_weight(weight_agg)
 
-        fig, ax = plot_change(merged_change, type_dict, "continuous", explainer.col_names_)
-        figure_designer(fig, ax, "Continuous ", "Change Medians", plausible, data_name, section)
+        fig, ax = plot_change(merged_change, type_dict, "continuous", explainer.col_names_, **kwargs)
+        if fig != 0:
+            figure_designer(fig, ax, "Continuous ", "Change Medians", plausible, data_name, section)
             
-        fig, ax = plot_change(merged_change, type_dict, "discrete", explainer.col_names_)
-        figure_designer(fig, ax, "Discrete ", "Change Medians", plausible, data_name, section)
+        fig, ax = plot_change(merged_change, type_dict, "discrete", explainer.col_names_, **kwargs)
+        if fig != 0:
+            figure_designer(fig, ax, "Discrete ", "Change Medians", plausible, data_name, section)
             
-        fig, ax = plot_weight(merged_weight, explainer.col_names_)
+        fig, ax = plot_weight(merged_weight, explainer.col_names_, **kwargs)
         figure_designer(fig, ax, "", "Feature Weights", plausible, data_name, section)
-        break
-
-        
-    return merged_change
+    
+        # if delta_heatmap:
+            # do delta_heatmap(change_agg)
+            # although I will have to go back and get a delta agg
+    
+    return
