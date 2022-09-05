@@ -185,7 +185,7 @@ class MyProblem(ElementwiseProblem):
 
 
 def get_problem(X, Y, pred_proba_func, x_orig, change_class,
-                plausible, use_MAD):
+                plausible, use_mad):
     '''Performs bound collection,
         MAD generation,
         and GMM from training dataset'''
@@ -196,7 +196,7 @@ def get_problem(X, Y, pred_proba_func, x_orig, change_class,
     x_orig_proba = pred_proba_func(x_orig.reshape(1, -1)
                                  ).reshape(-1)[change_class]
 
-    if use_MAD:
+    if use_mad:
         MAD = find_MAD(X)
     else:
         MAD = False
