@@ -9,8 +9,8 @@ def find_changes(
     res = explainer.get_results()
     orig_sample = explainer.sample_
     
-    X_pop = res.history[-1].pop.get("X")
-    F_pop = res.history[-1].pop.get("F")
+    X_pop = res.pop.get("X")
+    F_pop = res.pop.get("F")
     
     obj_1 = F_pop[:, [0]] * -1
     obj_2 = F_pop[:, [1]] * -1 * 100

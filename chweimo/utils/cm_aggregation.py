@@ -15,7 +15,7 @@ def split_by_cm(x, y, model, test_size=0.20, plot_cm=False, class_names=None):
     cm_dict_y = {"true_neg":[], "false_neg":[], "true_pos":[], "false_pos":[]}
     
     x_train, x_test, y_train, y_test = train_test_split(
-        x, y, test_size=test_size, random_state=0, stratify = y
+        x, y, test_size=test_size, random_state=123, stratify = y
         )
 
     model.fit(x_train, y_train)
@@ -29,6 +29,7 @@ def split_by_cm(x, y, model, test_size=0.20, plot_cm=False, class_names=None):
     if plot_cm:
         plt.rcParams['font.size'] = '15'
         fig = ConfusionMatrixDisplay(cm, display_labels=class_names)
+        print(cm)
         fig.plot(cmap="Greens", colorbar=False, xticks_rotation="horizontal")
 
     for i in range(x_test.shape[0]):

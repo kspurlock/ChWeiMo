@@ -1,9 +1,11 @@
 import copy
-import numpy as np
-import matplotlib.pyplot as plt
+from datetime import date
 
-from chweimo.explain_tools.linear_model import find_weight
+import matplotlib.pyplot as plt
+import numpy as np
 from chweimo.explain_tools.change import find_changes
+from chweimo.explain_tools.linear_model import find_weight
+
 
 def plot_weight(
     coef_dict, col_names, **kwargs
@@ -24,7 +26,7 @@ def plot_weight(
     width = 0.5
     
     fig, ax = plt.subplots()
-    if "hbar" in kwargs.keys() and kwargs["hbar"]==True:
+    if "barh" in kwargs.keys() and kwargs["barh"]==True:
         
         rects1 = ax.barh(
             ticks,
@@ -101,13 +103,16 @@ def plot_change(change_dict, type_dict, type_name, col_names, **kwargs):
         else:
             raise ValueError("Invalid type_name")
         
+        print(obj1_features, np.where(type_dict[type_name]==1))
+        
         obj1_features = obj1_features[np.where(type_dict[type_name]==1)]
+        
         obj2_features = obj2_features[np.where(type_dict[type_name]==1)]
         
         width = 0.35
         
         fig, ax = plt.subplots()
-        if "hbar" in kwargs.keys() and kwargs["hbar"]==True:
+        if "barh" in kwargs.keys() and kwargs["barh"]==True:
             
             rects1 = ax.barh(
                 ticks - width / 2, obj1_features, width, label="Obj1", color="tab:orange"
@@ -126,15 +131,15 @@ def plot_change(change_dict, type_dict, type_name, col_names, **kwargs):
         else:
             fig, ax = plt.subplots()
             rects1 = ax.bar(
-                x_ticks - width / 2, obj1_features, width, label="Obj1", color="tab:orange"
+                ticks - width / 2, obj1_features, width, label="Obj1", color="tab:orange"
             )
             rects2 = ax.bar(
-                x_ticks + width / 2, obj2_features, width, label="Obj2", color="tab:blue"
+                ticks + width / 2, obj2_features, width, label="Obj2", color="tab:blue"
             )
             
             ax.set_xlabel("Feature", fontdict={"fontsize": 12})
             ax.set_ylabel("{} Change".format("%" if type_name=="continuous" else ""), fontdict={"fontsize": 12})
-            ax.set_xticks(x_ticks)
+            ax.set_xticks(ticks)
             ax.set_xticklabels(short_names, fontdict={"fontsize": 8})
             ax.legend(loc="best", fontsize=8)
             ax.axhline(linestyle="--", color="black")
@@ -155,9 +160,27 @@ def show_change_weights(explainer, **kwargs):
     
     return (fig, ax)
 
-def show_change(explainer, type_dict):
+def show_change(explainer, type_dict, **kwargs):
     change_dict = find_changes(explainer)
-    fig1, ax1 = plot_change(change_dict, type_dict, "continuous", explainer.col_names_)
-    fig2, ax2 = plot_change(change_dict, type_dict, "discrete", explainer.col_names_)
+    fig1, ax1 = plot_change(change_dict, type_dict, "continuous", explainer.col_names_, **kwargs)
+    fig2, ax2 = plot_change(change_dict, type_dict, "discrete", explainer.col_names_, **kwargs)
     
     return fig1, ax1, fig2, ax2
+
+def design_title(type_name, fig_context, data_name, section):
+    return "{d}-{t}{f}{s}".format(d=data_name,
+                                           t=type_name,
+                                           s=section,
+                                           f=fig_context)
+    
+def figure_designer(fig, ax, type_name, fig_context, plausible, data_name, section):
+    pad = 25 if plausible else 0
+    title = design_title(type_name, fig_context, data_name, section)
+    ax.set_title(title, pad=pad)
+    
+    if plausible:
+        fig.text(.5, 0.98, "Plausible Results", ha="center")
+        
+    fig.savefig("{d}{t}.png".format(d=date.today(), t=title), bbox_inches="tight")
+    
+    return fig

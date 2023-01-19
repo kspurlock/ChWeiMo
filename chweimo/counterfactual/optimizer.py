@@ -4,6 +4,7 @@ from chweimo.counterfactual.problem import get_problem
 from pymoo.algorithms.moo.nsga2 import NSGA2
 from pymoo.factory import get_sampling, get_crossover, get_mutation, get_termination
 from pymoo.optimize import minimize
+from pymoo.core.callback import Callback
 
 import numpy as np
 import pandas as pd
@@ -73,7 +74,8 @@ class Optimizer():
                       "sampling": "real_random",
                       "crossover": ["real_sbx", 0.9, 15],
                       "mutation": ["real_pm", 20],
-                      "verbose": False}
+                      "verbose": False,
+                      "save_history": False}
             
             for key in kwargs.keys():
                 try:
@@ -102,7 +104,7 @@ class Optimizer():
                            algorithm,
                            termination,
                            seed=self.seed_,
-                           save_history=True,
+                           save_history=opt_param_["save_history"],
                            verbose=opt_param_["verbose"])
 
             # Pulling probability out from the problem for display purposes later
@@ -118,19 +120,23 @@ class Optimizer():
     def show_cf(self, n_solutions, return_cf=False):
         
         # Grab the entire final population solutions and their objective scores
-        xs = pd.DataFrame(self.res_.history[-1].pop.get("X")-self.sample_, columns=self.col_names_)
-        fs = (pd.DataFrame(self.res_.history[-1].pop.get("F"), columns=["Distance", "Pred Δ"])*-1)
+        xs = pd.DataFrame(self.res_.pop.get("X")-self.sample_, columns=self.col_names_)
+        fs = (pd.DataFrame(self.res_.pop.get("F"), columns=["Distance", "Pred Δ"])*-1)
         final_pop = pd.concat((xs, fs), axis=1)
         
         # Grab the final non-dominated solutions and their objective scores
-        non_dom_xs = pd.DataFrame(self.res_.X-self.sample_, columns=self.col_names)
-        non_dom_fs = pd.DataFrame(self.res_.F, columns=["Distance", "Pred Δ"])*-1
-        non_dom = pd.concat((non_dom_xs, non_dom_fs), axis=1)
+        try:
+            non_dom_xs = pd.DataFrame(self.res_.X-self.sample_, columns=self.col_names_)
+            non_dom_fs = pd.DataFrame(self.res_.F, columns=["Distance", "Pred Δ"])*-1
+            non_dom = pd.concat((non_dom_xs, non_dom_fs), axis=1)
+            non_dom["Distance"] = 1/non_dom["Distance"]
+        except TypeError as e:
+            non_dom = pd.DataFrame([])
+            print("No non-dominated solutions. Try increasing n_gen.")
 
         # Convert the distance back to its actual value
         final_pop["Distance"] = 1/fs["Distance"]
-        non_dom["Distance"] = 1/non_dom["Distance"]
-
+        
         # For all of the final population values, sort by the best objective values seperately
         best_obj1 = final_pop.sort_values(by="Distance").head(n_solutions)
         best_obj1.index = ["Obj1" for _ in range(best_obj1.shape[0])]
@@ -154,23 +160,25 @@ class Optimizer():
         
         final_pop["Non-Dom?"] = non_dom_col
 
-        # Style the final output
-        final_pop = final_pop.style.pipe(make_pretty)
+        sample_formatted = pd.DataFrame(np.append(self.sample_, [self.sample_proba_]).reshape(1,-1),
+                             columns=np.append(self.col_names_, ["Orig Class {} Prob".format(self.change_class_)]))
         
         if return_cf:
-            return final_pop
+            return final_pop, sample_formatted
         else:
-            display(
-                pd.DataFrame(np.append(self.sample_, [self.sample_proba_]).reshape(1,-1),
-                             columns=np.append(self.col_names_, ["Orig Class Prob"]))
-                )
+            # Style the final output
+            final_pop = final_pop.style.pipe(format_cf)
+            sample_formatted = sample_formatted.style.pipe(format_orig)
+            final_pop.to_html("counterfactuals.html")
+            sample_formatted.to_html("orig_sample.html")
+            display(sample_formatted)
             display(final_pop)
             
     def get_results(self):
         return self.res_
         
         
-def make_pretty(s):
+def format_cf(s):
     s.set_caption("Counterfactuals")
     
     s.apply(
@@ -191,6 +199,21 @@ def make_pretty(s):
         precision=1, formatter={
             ("Distance"): "{:.1f}",
             ("Pred Δ"): "{:.2f}"}
+        )
+    
+    return s
+
+def format_orig(s):
+    s.set_caption("Original Sample")
+    
+    s.set_table_styles([
+        {"selector": "th.col_heading.level0", "props": "font-size:0.8em; background-color:grey;"},
+        {"selector": "th:not(.index_name)", "props": "font-size:0.8em; background-color:grey;"},
+        {"selector": "th", "props": [("border", "1px solid white !important")]}
+    ])
+    
+    s.format(
+        precision=2
         )
     
     return s

@@ -94,7 +94,7 @@ def kl_divergence(coef_P, coef_Q):
         # for Q(i) to be ~0 than for P(i) to be (due to sparsity)
         d += prob_P[i]*log2(prob_Q[i]/prob_P[i])
     
-    return (1/(1+np.exp(d)))
+    return (1/(1+np.exp(d))) # Expit to bind range from 0 to 1, d is already negative here 
 
 def gini(coef):
     C = np.sort(abs(coef)+1)
@@ -116,8 +116,8 @@ def find_weight(
     explainer, **kwargs
 ):
     res = explainer.get_results()
-    X_pop = res.history[-1].pop.get("X")
-    F_pop = res.history[-1].pop.get("F")
+    X_pop = res.pop.get("X")
+    F_pop = res.pop.get("F")
     
     obj_2 = F_pop[:, [1]] * -1 * 100
     
